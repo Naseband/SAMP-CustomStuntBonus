@@ -26,8 +26,13 @@
 
 // Config
 
-#define MAX_HIST   			150
+#define MAX_HIST   			120
 #define TIMER_INTERVAL      250
+
+#define TEXT_DRAW_TIME      8000 // Time (ms) that the reward textdraw will be shown
+
+#define MIN_STUNT_DUR       1000
+#define MIN_STUNT_DIST      35.0
 
 // Reward factors
 
@@ -35,7 +40,7 @@
 #define MONEY_DIST      2.0 // Distance in meters (2$ per meter)
 #define MONEY_SALTO     100.0 // Num Saltos (100$ per salto)
 #define MONEY_BARREL    100.0 // Num Barrel Rolls (100$ per barrel roll)
-#define MONEY_ANGLE     1.0 // Turning Angle in degrees (1$ per degree)
+#define MONEY_TURN      100.0 // Turning Angle in degrees (1$ per degree)
 
 // Script Variables, Arrays etc
 
@@ -51,7 +56,7 @@ enum E_HIST
 	Float:htrZ
 };
 new Hist[MAX_PLAYERS][MAX_HIST][E_HIST];
-new HistNum[MAX_PLAYERS], HistCount[MAX_PLAYERS], HistVehicleID[MAX_PLAYERS];
+new HistNum[MAX_PLAYERS], HistCount[MAX_PLAYERS], HistVehicleID[MAX_PLAYERS], TDTick[MAX_PLAYERS], PlayerText:StuntText[MAX_PLAYERS];
 
 new HistTimerID = -1;
 
@@ -76,6 +81,9 @@ public OnFilterScriptInit()
 	    HistNum[i] = 0;
 	    HistCount[i] = 0;
 	    HistVehicleID[i] = -1;
+	    TDTick[i] = 0;
+	    
+	    if(IsPlayerConnected(i) && !IsPlayerNPC(i)) CreateTD(i);
 	}
 	
 	HistTimerID = SetTimer("HistTimer", TIMER_INTERVAL, 1);
@@ -97,17 +105,37 @@ public OnPlayerConnect(playerid)
     HistNum[playerid] = 0;
 	HistCount[playerid] = 0;
 	HistVehicleID[playerid] = -1;
+	TDTick[playerid] = 0;
+	
+	CreateTD(playerid);
 
+	return 1;
+}
+
+public OnPlayerDisconnect(playerid, reason)
+{
+    if(IsPlayerNPC(playerid)) return 1;
+    
+    PlayerTextDrawDestroy(playerid, StuntText[playerid]);
+    
 	return 1;
 }
 
 forward HistTimer();
 public HistTimer()
 {
-	new tick = GetTickCount(), str[100];
+	new tick = GetTickCount();
+	
+	if(tick == 0) tick = 1; // Time hack, to prevent endless TextDraws!
 	
 	foreach(Player, playerid)
 	{
+	    if(TDTick[playerid] != 0 && tick - TDTick[playerid] > TEXT_DRAW_TIME)
+	    {
+	        PlayerTextDrawHide(playerid, StuntText[playerid]);
+	        TDTick[playerid] = 0;
+	    }
+	    
 	    if(GetPlayerState(playerid) != PLAYER_STATE_DRIVER)
 		{
 		    if(HistCount[playerid] > 0) // Reset Hist
@@ -190,16 +218,18 @@ public HistTimer()
 			        if(Hist[playerid][i][htGroundContact]) break;
 				}
 
-				new saltos = rXd/360, barrel = rYd/360;
+				new saltos = rXd/360, barrel = rYd/360, turn360 = rZd/360;
 
-				if(dur > 1000 && dist > 30.0)
+				if(dur > MIN_STUNT_DUR && dist > MIN_STUNT_DIST)
 				{
-				    new money = floatround(dur*MONEY_DUR + dist*MONEY_DIST + saltos*MONEY_SALTO + barrel*MONEY_BARREL + rZd*MONEY_ANGLE);
+				    new money = floatround(dur*MONEY_DUR + dist*MONEY_DIST + saltos*MONEY_SALTO + barrel*MONEY_BARREL + turn360*MONEY_TURN);
 				    
-					format(str, sizeof(str), "Stunt Duration: %ds, Saltos: %d, Barrel Rolls: %d, Turning Angle: %d°, Distance: %.02fm", dur/1000, saltos, barrel, rZd, dist);
-					SendClientMessage(playerid, -1, str);
-					format(str, sizeof(str), "    Reward: $%d!", money);
-					SendClientMessage(playerid, -1, str);
+				    new str[125];
+					format(str, sizeof(str), "SUPER-STUNT~n~Duration: %ds, Saltos: %d, Barrel Rolls: %d, 360-Turns: %d, Distance: %.02fm~n~Reward: $%d", dur/1000, saltos, barrel, turn360, dist, money);
+					
+					PlayerTextDrawSetString(playerid, StuntText[playerid], str);
+					PlayerTextDrawShow(playerid, StuntText[playerid]);
+					TDTick[playerid] = tick;
 					
 					GivePlayerMoney(playerid, money);
 				}
@@ -211,6 +241,22 @@ public HistTimer()
 		if(HistCount[playerid] < MAX_HIST) HistCount[playerid] ++; // Higher count until maximum
 	}
 	
+	return 1;
+}
+
+CreateTD(playerid)
+{
+	StuntText[playerid] = CreatePlayerTextDraw(playerid, 320.0, 400.0, "_");
+	PlayerTextDrawLetterSize(playerid, StuntText[playerid], 0.25, 0.75);
+	PlayerTextDrawAlignment(playerid, StuntText[playerid], 2);
+	PlayerTextDrawColor(playerid, StuntText[playerid], 0xFFFFFFFF);
+	PlayerTextDrawBackgroundColor(playerid, StuntText[playerid], 0x000000FF);
+	PlayerTextDrawUseBox(playerid, StuntText[playerid], 0);
+	PlayerTextDrawSetShadow(playerid, StuntText[playerid], 0);
+	PlayerTextDrawSetOutline(playerid, StuntText[playerid], 1);
+	PlayerTextDrawFont(playerid, StuntText[playerid], 1);
+	PlayerTextDrawSetProportional(playerid, StuntText[playerid], 1);
+
 	return 1;
 }
 
@@ -231,7 +277,7 @@ CheckVehicleGroundContact(Float:X, Float:Y, Float:Z)
 	return 1;
 }
 
-stock floatangledist(Float:alpha, Float:beta) // Ranging from 0 to 180 (INT), not directional (left/right) - To be made directional!
+floatangledist(Float:alpha, Float:beta) // Ranging from 0 to 180 (INT), not directional (left/right) - To be made directional!
 {
     new phi = floatround(floatabs(beta - alpha), floatround_floor) % 360;
     new distance = phi > 180 ? 360 - phi : phi;
