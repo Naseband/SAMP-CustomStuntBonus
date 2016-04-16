@@ -18,22 +18,26 @@
 */
 
 #include <a_samp>
-#include <ColAndreas>
 #include <foreach>
+#include <ColAndreas>
 #include <QuaternionStuff>
 
 #define FILTERSCRIPT
 
-#define MAX_HIST   			200
-#define TIMER_INTERVAL      200
+// Config
+
+#define MAX_HIST   			150
+#define TIMER_INTERVAL      250
 
 // Reward factors
+
 #define MONEY_DUR       0.001 // Duration in ms (0.001$ per ms)
 #define MONEY_DIST      2.0 // Distance in meters (2$ per meter)
 #define MONEY_SALTO     100.0 // Num Saltos (100$ per salto)
 #define MONEY_BARREL    100.0 // Num Barrel Rolls (100$ per barrel roll)
 #define MONEY_ANGLE     1.0 // Turning Angle in degrees (1$ per degree)
 
+// Script Variables, Arrays etc
 
 enum E_HIST
 {
@@ -44,40 +48,56 @@ enum E_HIST
 	Float:htZ,
 	Float:htrX,
 	Float:htrY,
-	Float:htrZ,
-	Float:htvX,
-	Float:htvY,
-	Float:htvZ
+	Float:htrZ
 };
 new Hist[MAX_PLAYERS][MAX_HIST][E_HIST];
 new HistNum[MAX_PLAYERS], HistCount[MAX_PLAYERS], HistVehicleID[MAX_PLAYERS];
 
 new HistTimerID = -1;
 
-main()
-{ }
+// Data
+
+new const StuntVehicles[212] =
+{
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,1,1,1,0,1,0,0,1,0,1,1,1,1,1,1,1,1,1,1,
+	0,0,1,0,0,1,0,0,0,1,1,1,1,1,0,1,1,1,0,0,1,1,1,0,1,1,0,0,1,1,0,1,1,1,1,1,1,1,0,1,1,0,0,1,1,1,
+	1,0,1,1,1,0,1,1,1,0,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
+	0,0,1,1,1,1,1,1,1,1,0,1,1,1,1,0,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,0,0,1,1,1,1,1,1,0,1,1,1,1,1,1,
+	0,1,1,1,1,1,0,0,0,0,1,0,1,1,1,1,1,1,1,1,1,1,0,0,0,1,0,0
+};
 
 public OnFilterScriptInit()
 {
 	CA_Init();
-	EnableStuntBonusForAll(0);
+	EnableStuntBonusForAll(0); // Just to make sure!
 	
 	for(new i = 0; i < MAX_PLAYERS; i ++)
 	{
 	    HistNum[i] = 0;
 	    HistCount[i] = 0;
 	    HistVehicleID[i] = -1;
-	    
-	    for(new j = 0; j < MAX_HIST; j ++) Hist[i][j][htTick] = 0;
 	}
 	
 	HistTimerID = SetTimer("HistTimer", TIMER_INTERVAL, 1);
+	
 	return 1;
 }
 
 public OnFilterScriptExit()
 {
 	if(HistTimerID != -1) KillTimer(HistTimerID);
+	
+	return 1;
+}
+
+public OnPlayerConnect(playerid)
+{
+	if(IsPlayerNPC(playerid)) return 1;
+	
+    HistNum[playerid] = 0;
+	HistCount[playerid] = 0;
+	HistVehicleID[playerid] = -1;
+
 	return 1;
 }
 
@@ -90,7 +110,7 @@ public HistTimer()
 	{
 	    if(GetPlayerState(playerid) != PLAYER_STATE_DRIVER)
 		{
-		    if(HistCount[playerid] != 0) // Reset Hist
+		    if(HistCount[playerid] > 0) // Reset Hist
 		    {
 		        HistNum[playerid] = 0;
 			    HistCount[playerid] = 0;
@@ -101,26 +121,29 @@ public HistTimer()
 	    
 		new vid = GetPlayerVehicleID(playerid);
 		
-		if(vid != HistVehicleID[playerid]) // Reset Hist
+		if(!IsStuntVehicle(GetVehicleModel(vid)))
+		{
+		    if(HistCount[playerid] > 0) // This vehicle shouldnt be used for stunting - Reset Hist
+		    {
+		        HistNum[playerid] = 0;
+			    HistCount[playerid] = 0;
+			    HistVehicleID[playerid] = -1;
+		    }
+			continue;
+		}
+		
+		if(vid != HistVehicleID[playerid]) // Switched vehicle without leaving - Reset Hist
 		{
 		    HistNum[playerid] = 0;
 		    HistCount[playerid] = 0;
 		    HistVehicleID[playerid] = vid;
 		}
 		
-		new Float:X, Float:Y, Float:Z, Float:rW, Float:rX, Float:rY, Float:rZ, Float:vX, Float:vY, Float:vZ;
+		new Float:X, Float:Y, Float:Z, Float:rW, Float:rX, Float:rY, Float:rZ;
 		
 		GetVehiclePos(vid, X, Y, Z);
 		GetVehicleRotationQuat(vid, rW, rX, rY, rZ);
-		GetVehicleVelocity(vid, vX, vY, vZ);
-		
 		QuatToEuler(rX, rY, rZ, rW, rX, rY, rZ);
-		while(rX < -180.0) rX += 360.0;
-		while(rY < -180.0) rY += 360.0;
-		while(rZ < -180.0) rZ += 360.0;
-		while(rX > 180.0) rX -= 360.0;
-		while(rY > 180.0) rY -= 360.0;
-		while(rZ > 180.0) rZ -= 360.0;
 		
 		new gc = CheckVehicleGroundContact(X, Y, Z), cur = HistNum[playerid];
 		
@@ -132,22 +155,19 @@ public HistTimer()
 		Hist[playerid][cur][htrX] = rX;
 		Hist[playerid][cur][htrY] = rY;
 		Hist[playerid][cur][htrZ] = rZ;
-		Hist[playerid][cur][htvX] = vX;
-		Hist[playerid][cur][htvY] = vY;
-		Hist[playerid][cur][htvZ] = vZ;
 		
 		if(HistCount[playerid] > 1)
 		{
-			new prev = (cur > 0 ? cur-1 : MAX_HIST-1);
+			new prev = cur > 0 ? cur-1 : MAX_HIST-1;
 			
 			if(Hist[playerid][cur][htGroundContact] && !Hist[playerid][prev][htGroundContact]) // Re-gained ground contact
 			{
 			    new i = cur, dur, rXd, rYd, rZd, Float:dist;
 			    for(new j = 0; j < HistCount[playerid]; j ++)
 			    {
-			        i --;
-			        if(i < 0) i = HistCount[playerid] - 1;
-
+			        if(i == 0) i = HistCount[playerid] - 1;
+			        else i --;
+			        
 					if(j > 0)
 					{
 					    rXd += floatangledist(rX, Hist[playerid][i][htrX]);
@@ -176,7 +196,7 @@ public HistTimer()
 				{
 				    new money = floatround(dur*MONEY_DUR + dist*MONEY_DIST + saltos*MONEY_SALTO + barrel*MONEY_BARREL + rZd*MONEY_ANGLE);
 				    
-					format(str, sizeof(str), "Stunt Duration: %ds, Saltos: %d, Barrel Rolls: %d, Turning Angle: %d, Distance: %.02fm", dur/1000, saltos, barrel, rZd, dist);
+					format(str, sizeof(str), "Stunt Duration: %ds, Saltos: %d, Barrel Rolls: %d, Turning Angle: %d°, Distance: %.02fm", dur/1000, saltos, barrel, rZd, dist);
 					SendClientMessage(playerid, -1, str);
 					format(str, sizeof(str), "    Reward: $%d!", money);
 					SendClientMessage(playerid, -1, str);
@@ -190,6 +210,8 @@ public HistTimer()
 		if(HistNum[playerid] == MAX_HIST) HistNum[playerid] = 0; // Wrap around if reached maximum
 		if(HistCount[playerid] < MAX_HIST) HistCount[playerid] ++; // Higher count until maximum
 	}
+	
+	return 1;
 }
 
 /*
@@ -213,5 +235,15 @@ stock floatangledist(Float:alpha, Float:beta) // Ranging from 0 to 180 (INT), no
 {
     new phi = floatround(floatabs(beta - alpha), floatround_floor) % 360;
     new distance = phi > 180 ? 360 - phi : phi;
+    
     return distance;
 }
+
+IsStuntVehicle(modelid)
+{
+	if(modelid < 400 || modelid > 611) return 0;
+	
+	return StuntVehicles[modelid-400];
+}
+
+// --- EOF
