@@ -36,7 +36,7 @@
 
 // Reward factors
 
-#define MONEY_DUR       0.001 // Duration in ms (0.001$ per ms)
+#define MONEY_DUR       0.005 // Duration in ms (0.005$ per ms aka 5$ per s)
 #define MONEY_DIST      2.0 // Distance in meters (2$ per meter)
 #define MONEY_SALTO     100.0 // Num Saltos (100$ per salto)
 #define MONEY_BARREL    100.0 // Num Barrel Rolls (100$ per barrel roll)
