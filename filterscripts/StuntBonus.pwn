@@ -12,12 +12,16 @@
 
 		HAVE FUN!
 		
+		New: Stunt is showing for passengers too and the looping is a bit more efficient now
+		
 		PS: Suggestions regarding rotation processing are highly welcome!
 		
 		The Ground Detection is just basic atm, this is a test release so anyone can test it and give suggestions!
 */
 
 #include <a_samp>
+#define FOREACH_NO_PLAYERS
+#define FOREACH_NO_BOTS
 #include <foreach>
 #include <ColAndreas>
 #include <QuaternionStuff>
@@ -60,6 +64,8 @@ new HistNum[MAX_PLAYERS], HistCount[MAX_PLAYERS], HistVehicleID[MAX_PLAYERS], TD
 
 new HistTimerID = -1;
 
+new Iterator:it_Driver<MAX_PLAYERS>, Iterator:it_Passenger<MAX_PLAYERS>;
+
 // Data
 
 new const StuntVehicles[212] =
@@ -83,7 +89,16 @@ public OnFilterScriptInit()
 	    HistVehicleID[i] = -1;
 	    TDTick[i] = 0;
 	    
-	    if(IsPlayerConnected(i) && !IsPlayerNPC(i)) CreateTD(i);
+	    if(IsPlayerConnected(i) && !IsPlayerNPC(i))
+		{
+			CreateTD(i);
+			
+			switch(GetPlayerState(i))
+			{
+				case PLAYER_STATE_DRIVER: Iter_Add(it_Driver, i);
+				case PLAYER_STATE_PASSENGER: Iter_Add(it_Passenger, i);
+			}
+		}
 	}
 	
 	HistTimerID = SetTimer("HistTimer", TIMER_INTERVAL, 1);
@@ -118,6 +133,27 @@ public OnPlayerDisconnect(playerid, reason)
     
     PlayerTextDrawDestroy(playerid, StuntText[playerid]);
     
+    switch(GetPlayerState(playerid))
+	{
+		case PLAYER_STATE_DRIVER: if(Iter_Contains(it_Driver, playerid)) Iter_Remove(it_Driver, playerid);
+		case PLAYER_STATE_PASSENGER: if(Iter_Contains(it_Passenger, playerid))Iter_Remove(it_Passenger, playerid);
+	}
+    
+	return 1;
+}
+
+public OnPlayerStateChange(playerid, newstate, oldstate)
+{
+	if(newstate == PLAYER_STATE_DRIVER)
+	{
+	    if(Iter_Contains(it_Passenger, playerid)) Iter_Remove(it_Passenger, playerid);
+	    Iter_Add(it_Driver, playerid);
+	}
+	else if(newstate == PLAYER_STATE_PASSENGER)
+	{
+	    if(Iter_Contains(it_Driver, playerid)) Iter_Remove(it_Driver, playerid);
+	    Iter_Add(it_Passenger, playerid);
+	}
 	return 1;
 }
 
@@ -126,26 +162,22 @@ public HistTimer()
 {
 	new tick = GetTickCount();
 	
-	if(tick == 0) tick = 1; // Time hack, to prevent endless TextDraws!
-	
-	foreach(Player, playerid)
+	foreach(it_Passenger, playerid)
 	{
 	    if(TDTick[playerid] != 0 && tick - TDTick[playerid] > TEXT_DRAW_TIME)
 	    {
 	        PlayerTextDrawHide(playerid, StuntText[playerid]);
 	        TDTick[playerid] = 0;
 	    }
-	    
-	    if(GetPlayerState(playerid) != PLAYER_STATE_DRIVER)
-		{
-		    if(HistCount[playerid] > 0) // Reset Hist
-		    {
-		        HistNum[playerid] = 0;
-			    HistCount[playerid] = 0;
-			    HistVehicleID[playerid] = -1;
-		    }
-			continue;
-		}
+	}
+	
+	foreach(it_Driver, playerid)
+	{
+	    if(TDTick[playerid] != 0 && tick - TDTick[playerid] > TEXT_DRAW_TIME)
+	    {
+	        PlayerTextDrawHide(playerid, StuntText[playerid]);
+	        TDTick[playerid] = 0;
+	    }
 	    
 		new vid = GetPlayerVehicleID(playerid);
 		
@@ -224,14 +256,26 @@ public HistTimer()
 				{
 				    new money = floatround(dur*MONEY_DUR + dist*MONEY_DIST + saltos*MONEY_SALTO + barrel*MONEY_BARREL + turn360*MONEY_TURN);
 				    
-				    new str[125];
-					format(str, sizeof(str), "SUPER-STUNT~n~Duration: %ds, Saltos: %d, Barrel Rolls: %d, 360-Turns: %d, Distance: %.02fm~n~Reward: $%d", dur/1000, saltos, barrel, turn360, dist, money);
+				    new str[130];
+					format(str, sizeof(str), "You performed a SUPER-STUNT~n~Duration: %ds, Saltos: %d, Barrel Rolls: %d, 360-Turns: %d, Distance: %.02fm~n~Reward: $%d", dur/1000, saltos, barrel, turn360, dist, money);
 					
 					PlayerTextDrawSetString(playerid, StuntText[playerid], str);
 					PlayerTextDrawShow(playerid, StuntText[playerid]);
 					TDTick[playerid] = tick;
 					
 					GivePlayerMoney(playerid, money);
+					
+					GetPlayerName(playerid, str, 25);
+					format(str, sizeof(str), "%s performed a SUPER-STUNT~n~Duration: %ds, Saltos: %d, Barrel Rolls: %d, 360-Turns: %d, Distance: %.02fm", str, dur/1000, saltos, barrel, turn360, dist);
+					
+					foreach(it_Passenger, passengerid)
+					{
+					    if(GetPlayerVehicleID(passengerid) != vid) continue;
+					    
+					    PlayerTextDrawSetString(passengerid, StuntText[passengerid], str);
+						PlayerTextDrawShow(passengerid, StuntText[passengerid]);
+						TDTick[passengerid] = tick;
+					}
 				}
 			}
 		}
