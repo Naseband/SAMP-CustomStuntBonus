@@ -226,9 +226,9 @@ public HistTimer()
 	    
 		new vid = GetPlayerVehicleID(playerid), mid = GetVehicleModel(vid);
 		
-		if(!IsStuntVehicle(mid))
+		if(!IsStuntVehicle(mid)) // This vehicle shouldnt be used for stunting - Reset Hist
 		{
-		    if(HistCount[playerid] > 0) // This vehicle shouldnt be used for stunting - Reset Hist
+		    if(HistCount[playerid] > 0) 
 		    {
 		        HistNum[playerid] = 0;
 			    HistCount[playerid] = 0;
@@ -254,7 +254,20 @@ public HistTimer()
 		GetVehicleRotationQuat(vid, rW, rX, rY, rZ);
 		QuatToEuler(rX, rY, rZ, rW, rX, rY, rZ);
 		
-		new gc = CheckVehicleGroundContact(mid, X, Y, Z), cur = HistNum[playerid];
+		new gc = CheckVehicleGroundContact(mid, X, Y, Z, rZ), cur = HistNum[playerid];
+		
+		if(gc == -1) // Touched water - Reset Hist
+		{
+		    if(HistCount[playerid] > 0)
+		    {
+		        HistNum[playerid] = 0;
+			    HistCount[playerid] = 0;
+			    HistVehicleID[playerid] = -1;
+			    StuntCombo[playerid] = 0;
+			    StuntMoney[playerid] = 0;
+		    }
+			continue;
+		}
 		
 		Hist[playerid][cur][htTick] = tick;
 		Hist[playerid][cur][htGroundContact] = gc == 1;
@@ -385,21 +398,33 @@ CreateTD(playerid)
 /*
 Code for checking Ground Contact - Works with a matrix and the vehicle sizes. May get further improvements soon
 */
-CheckVehicleGroundContact(model, Float:X, Float:Y, Float:Z)
+CheckVehicleGroundContact(model, Float:X, Float:Y, Float:Z, Float:rZ)
 {
-	new Float:cX, Float:cY, Float:cZ, Float:sX, Float:sY, Float:sZ, ret;
+	rZ = -rZ / (180.0 / 3.141592);
+	
+	new Float:cX, Float:cY, Float:cZ, Float:sX, Float:sY, Float:sZ, ret, Float:nX, Float:nY;
 	
 	GetVehicleModelInfo(model, VEHICLE_MODEL_INFO_SIZE, sX, sY, sZ);
-	
-	for(new i = 0; i < sizeof(GCRayMatrix)/3; i ++)
+
+	sX *= 0.57;
+	sY *= 0.57;
+	sZ *= 0.57;
+
+	for(new i = 0; i < sizeof(GCRayMatrix); i += 3)
 	{
-	    cX = X + (GCRayMatrix[i] * sX);
-	    cY = Y + (GCRayMatrix[i+1] * sY);
+		nX = sX * GCRayMatrix[i];
+		nY = sY * GCRayMatrix[i+1];
+
+		cX = X + nX*floatcos(rZ) - nY*floatsin(rZ);
+		cY = Y + nX*floatsin(rZ) + nY*floatcos(rZ);
+	    
 	    cZ = Z + (GCRayMatrix[i+2] * sZ);
 	    
 	    ret = CA_RayCastLine(X, Y, Z, cX, cY, cZ, cX, cY, cZ);
-	    
-	    if(ret != 0) return 1;
+
+		if(ret == WATER_OBJECT) return -1;
+
+  		if(ret != 0) return 1;
 	}
 	
 	return 0;
