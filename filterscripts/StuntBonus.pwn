@@ -33,14 +33,14 @@
 // Config
 
 #define MAX_HIST   			100
-#define TIMER_INTERVAL      250
+#define TIMER_INTERVAL      170
 
 #define TEXT_DRAW_TIME      8000 // Time (ms) that the reward textdraw will be shown
 #define COMBO_TIME          10000 // Max Time between two Stunts to combo up
 
 #define MIN_STUNT_DUR       1000
 #define MIN_STUNT_DIST      30.0
-#define MAX_SPEED           140.0 // m/s
+#define MAX_SPEED           120.0 // m/s - may need some tweaking for falling?
 
 // Reward factors
 
@@ -65,7 +65,7 @@ new static const GCRayMatrix[] = // Ray "Matrix" for determining Ground Contact,
     -1, -1, -1,
     1, -1, -1,
     -1, 1, -1,
-    // Mid Sides Up
+    /*// Mid Sides Up
     0, 1, 1,
     1, 0, 1,
 	0, -1, 1,
@@ -74,7 +74,7 @@ new static const GCRayMatrix[] = // Ray "Matrix" for determining Ground Contact,
     0, 1, -1,
     1, 0, -1,
 	0, -1, -1,
-	-1, 0, -1,
+	-1, 0, -1,*/
 	// Center Down/Up
 	0, 0, 1,
 	0, 0, -1
@@ -141,7 +141,7 @@ public OnFilterScriptInit()
 		}
 	}
 	
-	HistTimerID = SetTimer("HistTimer", 50, 1);
+	HistTimerID = SetTimer("HistTimer", 30, 1);
 	
 	return 1;
 }
@@ -252,9 +252,10 @@ public HistTimer()
 		
 		GetVehiclePos(vid, X, Y, Z);
 		GetVehicleRotationQuat(vid, rW, rX, rY, rZ);
-		QuatToEuler(rX, rY, rZ, rW, rX, rY, rZ);
 		
-		new gc = CheckVehicleGroundContact(mid, X, Y, Z, rZ), cur = HistNum[playerid];
+		new gc = CheckVehicleGroundContact(mid, X, Y, Z, rW, rX, rY, rZ), cur = HistNum[playerid];
+		
+		QuatToEuler(rX, rY, rZ, rW, rX, rY, rZ);
 		
 		if(gc == -1) // Touched water - Reset Hist
 		{
@@ -284,7 +285,7 @@ public HistTimer()
 			
 			if(Hist[playerid][cur][htGroundContact] && !Hist[playerid][prev][htGroundContact]) // Re-gained ground contact
 			{
-			    new i = cur, dur, rXd, rYd, rZd, Float:dist, Float:distc;
+			    new i = cur, dur, Float:rXd, Float:rYd, Float:rZd, Float:dist, Float:distc;
 
 			    if(floatsqroot(floatpower(Hist[playerid][prev][htX] - Hist[playerid][i][htX], 2) + floatpower(Hist[playerid][prev][htY] - Hist[playerid][i][htY], 2) + floatpower(Hist[playerid][prev][htZ] - Hist[playerid][i][htZ], 2)) < MAX_SPEED / (1000.0 / TIMER_INTERVAL)) // Unrealistic distance (more than 100 m/s or teleport)
 			    {
@@ -295,13 +296,13 @@ public HistTimer()
 
 						if(j > 0)
 						{
-						    rXd += floatangledist(rX, Hist[playerid][i][htrX]);
-						    rYd += floatangledist(rY, Hist[playerid][i][htrY]);
-						    rZd += floatangledist(rZ, Hist[playerid][i][htrZ]);
+						    rXd += floatangledistdir(rX, Hist[playerid][i][htrX]);
+						    rYd += floatangledistdir(rY, Hist[playerid][i][htrY]);
+						    rZd += floatangledistdir(rZ, Hist[playerid][i][htrZ]);
 
 						    distc = floatsqroot(floatpower(X - Hist[playerid][i][htX], 2) + floatpower(Y - Hist[playerid][i][htY], 2) + floatpower(Z - Hist[playerid][i][htZ], 2));
 
-						    if(distc > MAX_SPEED / (1000.0 / TIMER_INTERVAL)) // Unrealistic distance (more than 100 m/s or teleport)
+						    if(distc > MAX_SPEED / (1000.0 / TIMER_INTERVAL)) // Unrealistic distance (more than 110 m/s or teleport)
 							{
 							    dist = 0.0;
 							    break;
@@ -323,7 +324,7 @@ public HistTimer()
 						Z = Hist[playerid][i][htZ];
 					}
 
-					new saltos = (rXd-(rXd%360))/360, barrel = (rYd-(rYd%360))/360, turn360 = (rZd-(rZd%360))/360;
+					new Float:saltos = (rXd < 0.0 ? -rXd : rXd)/360.0, Float:barrel = (rYd < 0.0 ? -rYd : rYd)/360.0, Float:turn360 = (rZd < 0.0 ? -rZd : rZd)/360.0;
 
 					if(dur >= MIN_STUNT_DUR && dist > MIN_STUNT_DIST)
 					{
@@ -345,8 +346,8 @@ public HistTimer()
 						LastStunt[playerid] = tick;
 
 					    new str[175];
-						if(StuntCombo[playerid] <= 1) format(str, sizeof(str), "You performed a SUPER-STUNT~n~Duration: %ds, Saltos: %d, Barrel Rolls: %d, 360-Turns: %d, Distance: %.02fm~n~~w~Reward: $%d", dur/1000, saltos, barrel, turn360, dist, money);
-						else format(str, sizeof(str), "You performed a SUPER-STUNT~n~Duration: %ds, Saltos: %d, Barrel Rolls: %d, 360-Turns: %d, Distance: %.02fm~n~~w~Stunt-Combo: %d~n~~w~Total Reward: $%d", dur/1000, saltos, barrel, turn360, dist, StuntCombo[playerid], StuntMoney[playerid]);
+						if(StuntCombo[playerid] <= 1) format(str, sizeof(str), "You performed a SUPER-STUNT~n~Duration: %ds, Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f, Distance: %.02fm~n~~w~Reward: $%d", dur/1000, saltos, barrel, turn360, dist, money);
+						else format(str, sizeof(str), "You performed a SUPER-STUNT~n~Duration: %ds, Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f, Distance: %.02fm~n~~w~Stunt-Combo: %d~n~~w~Total Reward: $%d", dur/1000, saltos, barrel, turn360, dist, StuntCombo[playerid], StuntMoney[playerid]);
 
 						PlayerTextDrawSetString(playerid, StuntText[playerid], str);
 						PlayerTextDrawShow(playerid, StuntText[playerid]);
@@ -355,8 +356,8 @@ public HistTimer()
 						GivePlayerMoney(playerid, money);
 
 						GetPlayerName(playerid, str, 25);
-						if(StuntCombo[playerid] <= 1) format(str, sizeof(str), "%s performed a SUPER-STUNT~n~~Duration: %ds, Saltos: %d, Barrel Rolls: %d, 360-Turns: %d, Distance: %.02fm", str, dur/1000, saltos, barrel, turn360, dist);
-						else format(str, sizeof(str), "%s performed a SUPER-STUNT~n~Duration: %ds, Saltos: %d, Barrel Rolls: %d, 360-Turns: %d, Distance: %.02fm~n~~w~Stunt-Combo: %d", str, dur/1000, saltos, barrel, turn360, dist, StuntCombo[playerid]);
+						if(StuntCombo[playerid] <= 1) format(str, sizeof(str), "%s performed a SUPER-STUNT~n~~Duration: %ds, Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f, Distance: %.02fm", str, dur/1000, saltos, barrel, turn360, dist);
+						else format(str, sizeof(str), "%s performed a SUPER-STUNT~n~Duration: %ds, Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f, Distance: %.02fm~n~~w~Stunt-Combo: %d", str, dur/1000, saltos, barrel, turn360, dist, StuntCombo[playerid]);
 
 						foreach(it_Passenger, passengerid)
 						{
@@ -375,6 +376,8 @@ public HistTimer()
 		if(HistNum[playerid] == MAX_HIST) HistNum[playerid] = 0; // Wrap around if reached maximum
 		if(HistCount[playerid] < MAX_HIST) HistCount[playerid] ++; // Higher count until maximum
 	}
+	
+	HistTimerTick = tick;
 	
 	return 1;
 }
@@ -396,13 +399,11 @@ CreateTD(playerid)
 }
 
 /*
-Code for checking Ground Contact - Works with a matrix and the vehicle sizes. May get further improvements soon
+Code for checking Ground Contact - Works with a matrix, point projection and the vehicle sizes. May get further improvements soon
 */
-CheckVehicleGroundContact(model, Float:X, Float:Y, Float:Z, Float:rZ)
+CheckVehicleGroundContact(model, Float:X, Float:Y, Float:Z, Float:rW, Float:rX, Float:rY, Float:rZ)
 {
-	rZ = -rZ / (180.0 / 3.141592);
-	
-	new Float:cX, Float:cY, Float:cZ, Float:sX, Float:sY, Float:sZ, ret, Float:nX, Float:nY;
+	new Float:sX, Float:sY, Float:sZ, ret, Float:cX, Float:cY, Float:cZ;
 	
 	GetVehicleModelInfo(model, VEHICLE_MODEL_INFO_SIZE, sX, sY, sZ);
 
@@ -410,17 +411,19 @@ CheckVehicleGroundContact(model, Float:X, Float:Y, Float:Z, Float:rZ)
 	sY *= 0.57;
 	sZ *= 0.57;
 
+	for(new i = 0; i < 1000; i ++) Delete3DTextLabel(Text3D:i);
+
 	for(new i = 0; i < sizeof(GCRayMatrix); i += 3)
 	{
-		nX = sX * GCRayMatrix[i];
-		nY = sY * GCRayMatrix[i+1];
-
-		cX = X + nX*floatcos(rZ) - nY*floatsin(rZ);
-		cY = Y + nX*floatsin(rZ) + nY*floatcos(rZ);
+	    point_rot_by_quat(sX * GCRayMatrix[i], sY * GCRayMatrix[i+1], sZ * GCRayMatrix[i+2], rW, -rX, -rY, -rZ, cX, cY, cZ);
 	    
-	    cZ = Z + (GCRayMatrix[i+2] * sZ);
+	    cX += X;
+	    cY += Y;
+	    cZ += Z;
 	    
 	    ret = CA_RayCastLine(X, Y, Z, cX, cY, cZ, cX, cY, cZ);
+	    
+	    Create3DTextLabel("X", 0xFF0000FF, cX, cY, cZ, 1000.0, 0, 0);
 
 		if(ret == WATER_OBJECT) return -1;
 
@@ -430,12 +433,33 @@ CheckVehicleGroundContact(model, Float:X, Float:Y, Float:Z, Float:rZ)
 	return 0;
 }
 
-floatangledist(Float:alpha, Float:beta) // Ranging from 0 to 180 (INT), not directional (left/right) - To be made directional!
+quat_mult(Float:qw, Float:qx, Float:qy, Float:qz, Float:rw, Float:rx, Float:ry, Float:rz, &Float:retw, &Float:retx, &Float:rety, &Float:retz)
 {
-    new phi = floatround(floatabs(beta - alpha), floatround_floor) % 360;
-    new distance = phi > 180 ? 360 - phi : phi;
+    retw = (rw*qw - rx*qx - ry*qy - rz*qz);
+    retx = (rw*qx + rx*qw - ry*qz + rz*qy);
+    rety = (rw*qy + rx*qz + ry*qw - rz*qx);
+    retz = (rw*qz - rx*qy + ry*qx + rz*qw);
     
-    return distance;
+    return 1;
+}
+
+point_rot_by_quat(Float:x, Float:y, Float:z, Float:qw, Float:qx, Float:qy, Float:qz, &Float:retx, &Float:rety, &Float:retz) // Quite efficient, no trig. functions at all! For a vehicle quat, invert qx, qy, qz - Converted from Python to PAWN (No author known)
+{
+	new Float:retw;
+
+    quat_mult(qw, qx, qy, qz, 0.0, x, y, z, retw, retx, rety, retz);
+    quat_mult(retw, retx, rety, retz, qw, -qx, -qy, -qz, retw, retx, rety, retz);
+
+    return 1;
+}
+
+forward Float:floatangledistdir(Float:firstAngle, Float:secondAngle); // Improved angle distance function - directional
+Float:floatangledistdir(Float:firstAngle, Float:secondAngle)
+{
+	new Float:difference = secondAngle - firstAngle;
+	while(difference < -180.0) difference += 360.0;
+	while(difference > 180.0) difference -= 360.0;
+	return difference;
 }
 
 IsStuntVehicle(modelid)

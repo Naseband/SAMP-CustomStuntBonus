@@ -19,7 +19,7 @@ Credits:
 
 - Gamer_Z > QuaternionStuff Plugin
 - [uL] Members Slice, Pottus, Chris42O and also Crayder & codectile > ColAndreas <3
-- Y_Less & Kar > foreach
+- Zeex & Kar > foreach
 
 Also thanks to ProRakNet, he reminded me of this again. Almost abandoned it.
 
