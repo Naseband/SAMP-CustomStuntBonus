@@ -16,12 +16,14 @@
 		The maximum duration of a stunt (in ms) is limited to (MAX_HIST / TIMER_INTERVAL), however a higher MAX_HIST will not affect the performance much.
 		This limits eventual farming methods to a certain level. If you find any efficient ways to trick the Rewards, please let me know.
 
+		-- Indentation screwed on GitHub, looks well in Pawno!
+
 		- HAVE FUN!
 */
 
 #include <a_samp>
 #undef MAX_PLAYERS
-#define MAX_PLAYERS       	1000 // Change to your maxplayers to save some memory
+#define MAX_PLAYERS       		1000 // Change to your maxplayers to save some memory
 #define FOREACH_NO_PLAYERS
 #define FOREACH_NO_BOTS
 #include <foreach>
@@ -32,24 +34,24 @@
 
 // Config
 
-#define MAX_HIST   			100
-#define TIMER_INTERVAL      170
+#define MAX_HIST   				100
+#define TIMER_INTERVAL      	170
 
-#define TEXT_DRAW_TIME      8000 // Time (ms) that the reward textdraw will be shown
-#define COMBO_TIME          10000 // Max Time between two Stunts to combo up
+#define TEXT_DRAW_TIME      	8000 // Time (ms) that the reward textdraw will be shown
+#define COMBO_TIME          	10000 // Max Time between two Stunts to combo up
 
-#define MIN_STUNT_DUR       1000
-#define MIN_STUNT_DIST      30.0
-#define MAX_SPEED           120.0 // m/s - may need some tweaking for falling?
+#define MIN_STUNT_DUR       	1000
+#define MIN_STUNT_DIST      	30.0
+#define MAX_SPEED           	120.0 // m/s - may need some tweaking for falling?
 
 // Reward factors
 
-#define MONEY_DUR       0.005 // Duration (0.001 = 1$ per s)
-#define MONEY_DIST      1.0 // Distance ($ per meter)
-#define MONEY_SALTO     60.0 // Num Saltos ($ per salto)
-#define MONEY_BARREL    70.0 // Num Barrel Rolls ($ per barrel roll)
-#define MONEY_TURN      40.0 // 360 Turns ($ per turn)
-#define MONEY_COMBO_MUL 10.0 // Combos (multiplier for Combo Num - per continous stunt so don't set it too high!)
+#define MONEY_DUR       		0.005 // Duration (0.001 = 1$ per s)
+#define MONEY_DIST      		1.0 // Distance ($ per meter)
+#define MONEY_SALTO     		60.0 // Num Saltos ($ per salto)
+#define MONEY_BARREL    		70.0 // Num Barrel Rolls ($ per barrel roll)
+#define MONEY_TURN      		40.0 // 360 Turns ($ per turn)
+#define MONEY_COMBO_MUL 		10.0 // Combos (multiplier for Combo Num - per continous stunt so don't set it too high!)
 
 //#define ccmp(%1) (strcmp(cmdtext,%1,true)==0) // For test CMDs
 
