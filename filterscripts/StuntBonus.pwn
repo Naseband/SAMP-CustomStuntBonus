@@ -411,19 +411,11 @@ CheckVehicleGroundContact(model, Float:X, Float:Y, Float:Z, Float:rW, Float:rX, 
 	sY *= 0.57;
 	sZ *= 0.57;
 
-	for(new i = 0; i < 1000; i ++) Delete3DTextLabel(Text3D:i);
-
 	for(new i = 0; i < sizeof(GCRayMatrix); i += 3)
 	{
 	    point_rot_by_quat(sX * GCRayMatrix[i], sY * GCRayMatrix[i+1], sZ * GCRayMatrix[i+2], rW, -rX, -rY, -rZ, cX, cY, cZ);
-	    
-	    cX += X;
-	    cY += Y;
-	    cZ += Z;
-	    
-	    ret = CA_RayCastLine(X, Y, Z, cX, cY, cZ, cX, cY, cZ);
-	    
-	    Create3DTextLabel("X", 0xFF0000FF, cX, cY, cZ, 1000.0, 0, 0);
+
+	    ret = CA_RayCastLine(X, Y, Z, cX + X, cY + Y, cZ + Z, cX, cY, cZ);
 
 		if(ret == WATER_OBJECT) return -1;
 
