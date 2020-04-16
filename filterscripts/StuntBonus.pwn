@@ -16,42 +16,39 @@
 		The maximum duration of a stunt (in ms) is limited to (MAX_HIST / TIMER_INTERVAL), however a higher MAX_HIST will not affect the performance much.
 		This limits eventual farming methods to a certain level. If you find any efficient ways to trick the Rewards, please let me know.
 
-		-- Indentation screwed on GitHub, looks well in Pawno!
-
 		- HAVE FUN!
 */
 
 #include <a_samp>
-#undef MAX_PLAYERS
-#define MAX_PLAYERS       		1000 // Change to your maxplayers to save some memory
 #define FOREACH_NO_PLAYERS
 #define FOREACH_NO_BOTS
+#define _FOREACH_NO_TEST
 #include <foreach>
 #include <ColAndreas>
-#include <QuaternionStuff>
+#include <rotations> // 1.2.0
 
 #define FILTERSCRIPT
 
 // Config
 
-#define MAX_HIST   				100
-#define TIMER_INTERVAL      	170
+#define MAX_HIST   			400
+#define TIMER_INTERVAL      150
 
-#define TEXT_DRAW_TIME      	8000 // Time (ms) that the reward textdraw will be shown
-#define COMBO_TIME          	10000 // Max Time between two Stunts to combo up
+#define TEXT_DRAW_TIME      8000 // Time (ms) that the reward textdraw will be shown
+#define COMBO_TIME          10000 // Max Time between two Stunts to combo up
 
-#define MIN_STUNT_DUR       	1000
-#define MIN_STUNT_DIST      	30.0
-#define MAX_SPEED           	120.0 // m/s - may need some tweaking for falling?
+#define MIN_STUNT_DUR       1000
+#define MIN_STUNT_DIST      30.0
+#define MAX_SPEED           520.0 // m/s - may need some tweaking for falling?
 
 // Reward factors
 
-#define MONEY_DUR       		0.005 // Duration (0.001 = 1$ per s)
-#define MONEY_DIST      		1.0 // Distance ($ per meter)
-#define MONEY_SALTO     		60.0 // Num Saltos ($ per salto)
-#define MONEY_BARREL    		70.0 // Num Barrel Rolls ($ per barrel roll)
-#define MONEY_TURN      		40.0 // 360 Turns ($ per turn)
-#define MONEY_COMBO_MUL 		10.0 // Combos (multiplier for Combo Num - per continous stunt so don't set it too high!)
+#define MONEY_DUR       0.005 // Duration (0.001 = 1$ per s)
+#define MONEY_DIST      1.0 // Distance ($ per meter)
+#define MONEY_SALTO     60.0 // Num Saltos ($ per salto)
+#define MONEY_BARREL    70.0 // Num Barrel Rolls ($ per barrel roll)
+#define MONEY_TURN      40.0 // 360 Turns ($ per turn)
+#define MONEY_COMBO_MUL 10.0 // Combos (multiplier for Combo Num - per continous stunt so don't set it too high!)
 
 //#define ccmp(%1) (strcmp(cmdtext,%1,true)==0) // For test CMDs
 
@@ -113,6 +110,15 @@ new const StuntVehicles[212] =
 	0,1,1,1,1,1,0,0,0,0,1,0,1,1,1,1,1,1,1,1,1,1,0,0,0,1,0,0
 };
 
+forward Float:floatangledistdir(Float:firstAngle, Float:secondAngle); // Improved angle distance function - directional
+Float:floatangledistdir(Float:firstAngle, Float:secondAngle)
+{
+	new Float:difference = secondAngle - firstAngle;
+	while(difference < -180.0) difference += 360.0;
+	while(difference > 180.0) difference -= 360.0;
+	return difference;
+}
+
 public OnFilterScriptInit()
 {
 	CA_Init();
@@ -152,6 +158,8 @@ public OnFilterScriptExit()
 {
 	if(HistTimerID != -1) KillTimer(HistTimerID);
 	HistTimerID = -1;
+
+	for(new i = 0; i < MAX_PLAYERS; i ++) if(IsPlayerConnected(i)) OnPlayerDisconnect(i, 0);
 	
 	return 1;
 }
@@ -178,12 +186,9 @@ public OnPlayerDisconnect(playerid, reason)
     if(IsPlayerNPC(playerid)) return 1;
     
     PlayerTextDrawDestroy(playerid, StuntText[playerid]);
-    
-    switch(GetPlayerState(playerid))
-	{
-		case PLAYER_STATE_DRIVER: if(Iter_Contains(it_Driver, playerid)) Iter_Remove(it_Driver, playerid);
-		case PLAYER_STATE_PASSENGER: if(Iter_Contains(it_Passenger, playerid))Iter_Remove(it_Passenger, playerid);
-	}
+
+	Iter_Remove(it_Driver, playerid);
+	Iter_Remove(it_Passenger, playerid);
     
 	return 1;
 }
@@ -256,8 +261,8 @@ public HistTimer()
 		GetVehicleRotationQuat(vid, rW, rX, rY, rZ);
 		
 		new gc = CheckVehicleGroundContact(mid, X, Y, Z, rW, rX, rY, rZ), cur = HistNum[playerid];
-		
-		QuatToEuler(rX, rY, rZ, rW, rX, rY, rZ);
+
+		GetEulerFromQuat(rW, rX, rY, rZ, rX, rY, rZ, euler_samp);
 		
 		if(gc == -1) // Touched water - Reset Hist
 		{
@@ -348,8 +353,8 @@ public HistTimer()
 						LastStunt[playerid] = tick;
 
 					    new str[175];
-						if(StuntCombo[playerid] <= 1) format(str, sizeof(str), "You performed a SUPER-STUNT~n~Duration: %ds, Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f, Distance: %.02fm~n~~w~Reward: $%d", dur/1000, saltos, barrel, turn360, dist, money);
-						else format(str, sizeof(str), "You performed a SUPER-STUNT~n~Duration: %ds, Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f, Distance: %.02fm~n~~w~Stunt-Combo: %d~n~~w~Total Reward: $%d", dur/1000, saltos, barrel, turn360, dist, StuntCombo[playerid], StuntMoney[playerid]);
+						if(StuntCombo[playerid] <= 1) format(str, sizeof(str), "SUPER-STUNT~n~~w~Duration: %ds~n~Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f~n~Distance: %.02fm~n~Reward: $%d", dur/1000, saltos, barrel, turn360, dist, money);
+						else format(str, sizeof(str), "SUPER-STUNT~n~~w~Duration: %ds~n~Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f~n~Distance: %.02fm~n~Stunt-Combo: %d~n~Total Reward: $%d", dur/1000, saltos, barrel, turn360, dist, StuntCombo[playerid], StuntMoney[playerid]);
 
 						PlayerTextDrawSetString(playerid, StuntText[playerid], str);
 						PlayerTextDrawShow(playerid, StuntText[playerid]);
@@ -358,8 +363,8 @@ public HistTimer()
 						GivePlayerMoney(playerid, money);
 
 						GetPlayerName(playerid, str, 25);
-						if(StuntCombo[playerid] <= 1) format(str, sizeof(str), "%s performed a SUPER-STUNT~n~~Duration: %ds, Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f, Distance: %.02fm", str, dur/1000, saltos, barrel, turn360, dist);
-						else format(str, sizeof(str), "%s performed a SUPER-STUNT~n~Duration: %ds, Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f, Distance: %.02fm~n~~w~Stunt-Combo: %d", str, dur/1000, saltos, barrel, turn360, dist, StuntCombo[playerid]);
+						if(StuntCombo[playerid] <= 1) format(str, sizeof(str), "%s performed a SUPER-STUNT~n~~~w~Duration: %ds~n~Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f~n~Distance: %.02fm", str, dur/1000, saltos, barrel, turn360, dist);
+						else format(str, sizeof(str), "%s performed a SUPER-STUNT~n~~w~Duration: %ds~n~Saltos: %.1f, Barrel Rolls: %.1f, 360-Turns: %.1f~n~Distance: %.02fm~n~Stunt-Combo: %d", str, dur/1000, saltos, barrel, turn360, dist, StuntCombo[playerid]);
 
 						foreach(it_Passenger, passengerid)
 						{
@@ -386,10 +391,10 @@ public HistTimer()
 
 CreateTD(playerid)
 {
-	StuntText[playerid] = CreatePlayerTextDraw(playerid, 320.0, 400.0, "_");
-	PlayerTextDrawLetterSize(playerid, StuntText[playerid], 0.25, 0.75);
+	StuntText[playerid] = CreatePlayerTextDraw(playerid, 320.0, 360.0, "_");
+	PlayerTextDrawLetterSize(playerid, StuntText[playerid], 0.35, 1.08);
 	PlayerTextDrawAlignment(playerid, StuntText[playerid], 2);
-	PlayerTextDrawColor(playerid, StuntText[playerid], 0x99FF00FF);
+	PlayerTextDrawColor(playerid, StuntText[playerid], 0x666666FF);
 	PlayerTextDrawBackgroundColor(playerid, StuntText[playerid], 0x000000FF);
 	PlayerTextDrawUseBox(playerid, StuntText[playerid], 0);
 	PlayerTextDrawSetShadow(playerid, StuntText[playerid], 0);
@@ -445,15 +450,6 @@ point_rot_by_quat(Float:x, Float:y, Float:z, Float:qw, Float:qx, Float:qy, Float
     quat_mult(retw, retx, rety, retz, qw, -qx, -qy, -qz, retw, retx, rety, retz);
 
     return 1;
-}
-
-forward Float:floatangledistdir(Float:firstAngle, Float:secondAngle); // Improved angle distance function - directional
-Float:floatangledistdir(Float:firstAngle, Float:secondAngle)
-{
-	new Float:difference = secondAngle - firstAngle;
-	while(difference < -180.0) difference += 360.0;
-	while(difference > 180.0) difference -= 360.0;
-	return difference;
 }
 
 IsStuntVehicle(modelid)
