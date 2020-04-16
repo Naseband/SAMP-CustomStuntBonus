@@ -4,11 +4,10 @@ This is a small Filterscript for SAMP which introduces Stunt Bonuses (Jumps only
 Those are natively existing (EnableStuntBonusForPlayer/All), however they only work on the original map and are highly abusive if there are custom objects.
 Also the Server cannot know if the player is using a moneyhack or actually stunting.
 
-Using ColAndreas, Jumps can also be detected on custom objects!
-This gives you full control over the Stunts. You can create custom rewards like Stunt Points or only show the Stunt Message without any rewards. Be creative!
+With this script, stunts can be performed anywhere, as long as the objects are added to CA's collision world.
 
 Until now, the Script is able to detect the Jump's duration, distance, Saltos, Barrel Rolls and 360 Turns, and also features Stunt-Combos.
-In the future I plan to also add Plane Stunts (Loops, Barrel Rolls etc) but with a little more challenge to it (maybe different combos of stunts give rewards?).
+Passengers of stunting drivers will also see a message about the stunt, but receive no reward.
 
 Config defines and most of the functions are explained inside the script.
 
