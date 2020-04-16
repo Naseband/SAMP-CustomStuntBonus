@@ -13,11 +13,11 @@ In the future I plan to also add Plane Stunts (Loops, Barrel Rolls etc) but with
 Config defines and most of the functions are explained inside the script.
 
 
-To run this script, you need the foreach include, the ColAndreas Plugin and the QuaternionStuff Plugin.
+To run this script, you need the foreach include, the ColAndreas Plugin and the rotations.inc include by Nero_3D.
 
 Credits:
 
-- Gamer_Z > QuaternionStuff Plugin
+- Nero_3D > rotations.inc (v 1.2.0)
 - [uL] Members Slice, Pottus, Chris42O and also Crayder & codectile > ColAndreas <3
 - Zeex & Kar > foreach
 
