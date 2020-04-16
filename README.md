@@ -12,13 +12,8 @@ Passengers of stunting drivers will also see a message about the stunt, but rece
 Config defines and most of the functions are explained inside the script.
 
 
-To run this script, you need the foreach include, the ColAndreas Plugin and the rotations.inc include by Nero_3D.
+To run this script, you need the foreach include, the ColAndreas plugin and the rotations.inc include by Nero_3D.
 
 Credits:
 
-- Nero_3D > rotations.inc (v 1.2.0)
-- [uL] Members Slice, Pottus, Chris42O and also Crayder & codectile > ColAndreas <3
-- Zeex & Kar > foreach
-
-Also thanks to ProRakNet, he reminded me of this again. Almost abandoned it.
-
+Thanks to everyone who contributed to foreach, ColAndreas and rotations.inc.
